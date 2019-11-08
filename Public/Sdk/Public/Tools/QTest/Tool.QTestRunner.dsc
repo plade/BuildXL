@@ -108,6 +108,19 @@ function validateArguments(args: QTestArguments): void {
     }
 }
 
+function copyFlakyConfigToSandbox(sandboxDir: Directory): void {
+    let configDirectory = d`${Context.getMount("SourceRoot").path}\.config`;
+    let flakySuppressionFileName = "CloudBuild.FlakyTests.json";
+    Debug.writeLine("Testing flaky suppress folder");
+
+    // Find the file path in the config directory
+    let flakySuppressionFiles = globR(configDirectory, flakySuppressionFileName);
+    if (flakySuppressionFiles.length > 0) {
+        Debug.writeLine("Flaky file found.", flakySuppressionFiles[0].toString());
+        Transformer.copyFile(flakySuppressionFiles[0], p`${sandboxDir}`);
+    }
+}
+
 /**
  * Evaluate (i.e. schedule) QTest runner with specified arguments.
  */
@@ -144,6 +157,10 @@ export function runQTest(args: QTestArguments): Result {
             scrub: true,
         });
     } 
+
+    // Microsoft internal cloud service use only
+    // We need to copy Flaky test suppression file from the source root directory to the QTest sandbox root for QTest pip to read it.
+    copyFlakyConfigToSandbox(sandboxDir);
 
     // If no qTestInputs is specified, use the qTestDirToDeploy
     qTestDirToDeploy = qTestDirToDeploy || args.qTestDirToDeploy;
